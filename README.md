@@ -1,0 +1,1 @@
+Rename `conf.example.yml` to `conf.yml` and fill it in.
