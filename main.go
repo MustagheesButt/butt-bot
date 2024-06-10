@@ -68,8 +68,10 @@ func main() {
 	// Register messageCreate as a callback for the messageCreate events.
 	dcSession.AddHandler(messageCreate)
 
+	// dcSession.AddHandler(guildCreate)
+
 	// Declare intents
-	// discord.Identify.Intents = discordgo.IntentsGuildMessages
+	dcSession.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentsGuildMessages | discordgo.IntentsGuildVoiceStates | discordgo.IntentMessageContent
 
 	// Open the websocket and begin listening.
 	err = dcSession.Open()
@@ -168,13 +170,45 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 func Download(videoUrl string) error {
 	fmt.Println("Started download", time.Now(), videoUrl)
 
-	cmd := exec.Command("youtube-dl", "--format", "140", "--rm-cache-dir", "-o", "downloads/%(title)s.%(ext)s", videoUrl)
+	// TODO check if already exists (by url or meta info)
+	cmd := exec.Command(
+		"youtube-dl", "--format", "140",
+		"--rm-cache-dir",
+		"-x", "--audio-format", "opus",
+		"--audio-quality", "0",
+		"-o", "downloads/%(title)s.%(ext)s",
+		videoUrl,
+	)
 	out, err := cmd.Output()
 	if err != nil {
 		fmt.Println(string(out))
 		fmt.Println(err)
 
 		return errors.New("your requested audio couldnt be downloaded")
+	}
+
+	// extract filename from the output
+	extractNameCmd := "echo '" + string(out) + "' | grep opus | sed 's/.*\\///'"
+	cmd = exec.Command("bash", "-c", extractNameCmd)
+	out, err = cmd.Output()
+	filename := strings.TrimSpace(string(out))
+
+	if err != nil {
+		fmt.Println(string(out))
+		fmt.Println(err)
+
+		return errors.New("failed to extract filename")
+	}
+
+	// encode to DCA format
+	convertToDcaCmd := "/Users/mustaghees/go/bin/dca -i 'downloads/" + filename + "' > 'downloads/" + filename + ".dca'; rm 'downloads/" + filename + "'"
+	cmd = exec.Command("bash", "-c", convertToDcaCmd)
+	_, err = cmd.Output()
+
+	if err != nil {
+		fmt.Println("couldnt encode to DCA", err)
+
+		return errors.New("couldnt encode to DCA")
 	}
 
 	fmt.Println("Finished? download", time.Now())
@@ -188,7 +222,9 @@ func Play(
 	authorId string,
 	query string,
 ) {
-	filename := cm.Closest(query)
+	var filename = cm.Closest(query)
+
+	fmt.Println("Now playing", filename)
 
 	// Load the sound file.
 	err := loadSound(filename)
@@ -212,7 +248,7 @@ func Play(
 	fmt.Println("Looks like the message author was not in any VC")
 }
 
-var buffer = make([][]byte, 0)
+var buffer [][]byte
 
 // loadSound attempts to load an encoded sound file from disk.
 func loadSound(filename string) error {
@@ -224,6 +260,7 @@ func loadSound(filename string) error {
 	}
 
 	var opuslen int16
+	buffer = make([][]byte, 0)
 
 	for {
 		// Read opus frame length from dca file.
@@ -241,6 +278,10 @@ func loadSound(filename string) error {
 		if err != nil {
 			fmt.Println("Error reading from dca file :", err)
 			return err
+		}
+
+		if opuslen < 0 {
+			return errors.New("frame size is negative, possibly corrupted")
 		}
 
 		// Read encoded pcm from dca file.
@@ -305,3 +346,17 @@ func List() ([]string, error) {
 
 	return files, nil
 }
+
+// func guildCreate(s *discordgo.Session, event *discordgo.GuildCreate) {
+
+// 	if event.Guild.Unavailable {
+// 		return
+// 	}
+
+// 	for _, channel := range event.Guild.Channels {
+// 		if channel.ID == event.Guild.ID {
+// 			_, _ = s.ChannelMessageSend(channel.ID, "ButtBot is ready! Type !butt while in a voice channel to play a sound.")
+// 			return
+// 		}
+// 	}
+// }
