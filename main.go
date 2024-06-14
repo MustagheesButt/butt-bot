@@ -113,7 +113,11 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 		var tokens = strings.Split(m.Content, " ")
 		if len(tokens) < 2 || len(tokens) > 3 {
-			fmt.Println("Wrong number of command args")
+			_, err := s.ChannelMessageSend(m.ChannelID, Help())
+			if err != nil {
+				fmt.Println(err)
+			}
+
 			return
 		}
 
@@ -140,6 +144,11 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		} else if tokens[1] == "play" {
 			Play(s, g.VoiceStates, g.ID, m.Author.ID, tokens[2])
 			fmt.Println("done playing (TODO make async)")
+		} else if tokens[1] == "info" {
+			_, err := s.ChannelMessageSend(m.ChannelID, Info())
+			if err != nil {
+				fmt.Println(err)
+			}
 		} else {
 			var vidUrl = tokens[1]
 			_, err := url.ParseRequestURI(vidUrl)
@@ -201,7 +210,7 @@ func Download(videoUrl string) error {
 	}
 
 	// encode to DCA format
-	convertToDcaCmd := "/Users/mustaghees/go/bin/dca -i 'downloads/" + filename + "' > 'downloads/" + filename + ".dca'; rm 'downloads/" + filename + "'"
+	convertToDcaCmd := "ffmpeg -i 'downloads/" + filename + "' -f s16le -ar 48000 -ac 2 pipe:1 | dca > 'downloads/" + filename + ".dca'; rm 'downloads/" + filename + "'"
 	cmd = exec.Command("bash", "-c", convertToDcaCmd)
 	_, err = cmd.Output()
 
@@ -345,6 +354,47 @@ func List() ([]string, error) {
 	}
 
 	return files, nil
+}
+
+func Info() string {
+	// neofetch without colors
+	cmd := "neofetch | sed 's/\x1B\\[[0-9;]*m//g'"
+	stats, err := exec.Command("bash", "-c", cmd).Output()
+	if err != nil {
+		return err.Error()
+	}
+
+	_, os, _ := strings.Cut(string(stats), "OS: ")
+	os, _, _ = strings.Cut(os, "\n")
+	_, cpu, _ := strings.Cut(string(stats), "CPU: ")
+	cpu, _, _ = strings.Cut(cpu, "\n")
+	_, ram, _ := strings.Cut(string(stats), "Memory: ")
+	ram, _, _ = strings.Cut(ram, "\n")
+	_, host, _ := strings.Cut(string(stats), "Host: ")
+	host, _, _ = strings.Cut(host, "\n")
+	_, kernel, _ := strings.Cut(string(stats), "Kernel: ")
+	kernel, _, _ = strings.Cut(kernel, "\n")
+	_, uptime, _ := strings.Cut(string(stats), "Uptime: ")
+	uptime, _, _ = strings.Cut(uptime, "\n")
+
+	output := fmt.Sprintf(`ButtBot v0.3-alpha-release-candidate
+	OS: %s
+	CPU: %s
+	RAM: %s
+	Host: %s
+	Kernel: %s
+	Uptime: %s
+	`, os, cpu, ram, host, kernel, uptime)
+
+	return output
+}
+
+func Help() string {
+	return "Usage:\n" +
+		"1. Download `!butt <youtube-url>`\n" +
+		"2. List all media `!butt list`\n" +
+		"3. Play media `!butt play <keyword>`\n" +
+		"4. System info `!butt info`"
 }
 
 // func guildCreate(s *discordgo.Session, event *discordgo.GuildCreate) {
