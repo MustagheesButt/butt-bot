@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -112,7 +113,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if strings.HasPrefix(m.Content, "!butt") {
 
 		var tokens = strings.Split(m.Content, " ")
-		if len(tokens) < 2 || len(tokens) > 3 {
+		if len(tokens) < 2 {
 			_, err := s.ChannelMessageSend(m.ChannelID, Help())
 			if err != nil {
 				fmt.Println(err)
@@ -138,11 +139,15 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		if tokens[1] == "list" {
 			files, err := List()
 			if err != nil {
+				fmt.Println(err)
 				return
 			}
 			s.ChannelMessageSend(m.ChannelID, strings.Join(files, "\n"))
 		} else if tokens[1] == "play" {
-			Play(s, g.VoiceStates, g.ID, m.Author.ID, tokens[2])
+			tokens = slices.Delete(tokens, 0, 1)
+			keywords := strings.Join(tokens, "")
+			Play(s, g.VoiceStates, g.ID, m.Author.ID, keywords)
+
 			fmt.Println("done playing (TODO make async)")
 		} else if tokens[1] == "info" {
 			_, err := s.ChannelMessageSend(m.ChannelID, Info())
@@ -167,7 +172,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 					s.ChannelMessageSend(m.ChannelID, err.Error())
 				}
 
-				// Update files list for search
+				// Update search index
 				files, _ := List()
 				cm = closestmatch.New(files, bagSizes)
 			}()
@@ -177,11 +182,16 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 }
 
 func Download(videoUrl string) error {
+	// check for playlist
+	if strings.Contains(videoUrl, "&list=") {
+		return errors.New("playlists are not supported yet")
+	}
+
 	fmt.Println("Started download", time.Now(), videoUrl)
 
 	// TODO check if already exists (by url or meta info)
 	cmd := exec.Command(
-		"youtube-dl", "--format", "140",
+		"yt-dlp", "--format", "140",
 		"--rm-cache-dir",
 		"-x", "--audio-format", "opus",
 		"--audio-quality", "0",
@@ -220,7 +230,7 @@ func Download(videoUrl string) error {
 		return errors.New("couldnt encode to DCA")
 	}
 
-	fmt.Println("Finished? download", time.Now())
+	fmt.Println("Finished download", time.Now())
 	return nil
 }
 
@@ -340,6 +350,7 @@ func playSound(s *discordgo.Session, guildID, channelID string) (err error) {
 	return nil
 }
 
+// TODO check character limit
 func List() ([]string, error) {
 	entries, err := os.ReadDir("downloads/")
 	if err != nil {
@@ -347,7 +358,9 @@ func List() ([]string, error) {
 	}
 
 	var files []string
-	for _, entry := range entries {
+	var total = len(entries)
+	for i := 0; i < total && i < 10; i++ {
+		entry := entries[i]
 		if !entry.IsDir() {
 			files = append(files, entry.Name())
 		}
@@ -377,7 +390,7 @@ func Info() string {
 	_, uptime, _ := strings.Cut(string(stats), "Uptime: ")
 	uptime, _, _ = strings.Cut(uptime, "\n")
 
-	output := fmt.Sprintf(`ButtBot v0.3-alpha-release-candidate
+	output := fmt.Sprintf(`ButtBot v0.4-alpha-release-candidate
 	OS: %s
 	CPU: %s
 	RAM: %s
