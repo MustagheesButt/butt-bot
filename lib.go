@@ -71,22 +71,38 @@ func playSound(s *discordgo.Session, guildID, channelID string) (err error) {
 		return err
 	}
 
-	// Sleep for a specified amount of time before playing the sound
-	time.Sleep(250 * time.Millisecond)
-
-	// Start speaking.
-	vc.Speaking(true)
-
-	// Send the buffer data.
-Loop:
-	for _, buff := range buffer {
+QueueLoop:
+	for {
 		select {
-		case _cmd := <-cmd:
-			if _cmd == "stop" {
-				break Loop
+		// TODO fix bug last playing doesnt end - infinite loop
+		case next := <-queue:
+			// Load the sound file.
+			err := loadSound(next)
+			if err != nil {
+				fmt.Println("Error loading sound: ", err)
+				return err
 			}
+			fmt.Println("Now playing", next)
 		default:
-			vc.OpusSend <- buff
+			// Sleep for a specified amount of time before playing the sound
+			time.Sleep(250 * time.Millisecond)
+			// Start speaking.
+			vc.Speaking(true)
+
+			// Send the buffer data.
+		PlayLoop:
+			for _, buff := range buffer {
+				select {
+				case _cmd := <-cmd:
+					if _cmd == "stop" {
+						break QueueLoop
+					} else if _cmd == "skip" {
+						break PlayLoop
+					}
+				default:
+					vc.OpusSend <- buff
+				}
+			}
 		}
 	}
 

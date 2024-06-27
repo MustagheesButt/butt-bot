@@ -66,6 +66,9 @@ func Download(videoUrl string) error {
 	return nil
 }
 
+var queue = make(chan string, 2)
+var isPlaying = false
+
 func Play(
 	s *discordgo.Session,
 	voiceStates []*discordgo.VoiceState,
@@ -74,29 +77,27 @@ func Play(
 	query string,
 ) {
 	var filename = cm.Closest(query)
+	queue <- filename
 
-	fmt.Println("Now playing", filename)
+	fmt.Println("Queued", filename)
 
-	// Load the sound file.
-	err := loadSound(filename)
-	if err != nil {
-		fmt.Println("Error loading sound: ", err)
-		return
-	}
+	if !isPlaying {
+		// Look for the message sender in that guild's current voice states.
+		for _, vs := range voiceStates {
+			if vs.UserID == authorId {
+				isPlaying = true
+				err := playSound(s, guildId, vs.ChannelID)
+				if err != nil {
+					fmt.Println("Error playing sound:", err)
+				}
+				isPlaying = false
 
-	// Look for the message sender in that guild's current voice states.
-	for _, vs := range voiceStates {
-		if vs.UserID == authorId {
-			err := playSound(s, guildId, vs.ChannelID)
-			if err != nil {
-				fmt.Println("Error playing sound:", err)
+				return
 			}
-
-			return
 		}
-	}
 
-	fmt.Println("Looks like the message author was not in any VC")
+		fmt.Println("Looks like the message author was not in any VC")
+	}
 }
 
 func Stop() {
