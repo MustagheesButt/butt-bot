@@ -78,8 +78,16 @@ func playSound(s *discordgo.Session, guildID, channelID string) (err error) {
 	vc.Speaking(true)
 
 	// Send the buffer data.
+Loop:
 	for _, buff := range buffer {
-		vc.OpusSend <- buff
+		select {
+		case _cmd := <-cmd:
+			if _cmd == "stop" {
+				break Loop
+			}
+		default:
+			vc.OpusSend <- buff
+		}
 	}
 
 	// Stop speaking

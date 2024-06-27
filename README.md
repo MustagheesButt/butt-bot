@@ -16,7 +16,8 @@ Also need `neofetch` and `sed` for `info` command.
 
 ## Todos
 
-- stop music
+- ~~stop music~~
 - queue music, skip entry in queue
 - make sure everything is non blocking
 - paging in `list` command (or remove `list` entirely)
+- implement slash commands

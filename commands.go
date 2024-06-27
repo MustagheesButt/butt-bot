@@ -11,6 +11,8 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
+var cmd = make(chan string)
+
 func Download(videoUrl string) error {
 	// check for playlist
 	if strings.Contains(videoUrl, "&list=") {
@@ -22,7 +24,7 @@ func Download(videoUrl string) error {
 	// TODO check if already exists (by url or meta info)
 	cmd := exec.Command(
 		"yt-dlp", "--format", "140",
-		"--rm-cache-dir",
+		// "--rm-cache-dir",
 		"-x", "--audio-format", "opus",
 		"--audio-quality", "0",
 		"-o", "downloads/%(title)s.%(ext)s",
@@ -97,6 +99,10 @@ func Play(
 	fmt.Println("Looks like the message author was not in any VC")
 }
 
+func Stop() {
+	cmd <- "stop"
+}
+
 // TODO check character limit
 func List() ([]string, error) {
 	entries, err := os.ReadDir("downloads/")
@@ -137,7 +143,7 @@ func Info() string {
 	_, uptime, _ := strings.Cut(string(stats), "Uptime: ")
 	uptime, _, _ = strings.Cut(uptime, "\n")
 
-	output := fmt.Sprintf(`ButtBot v0.4-alpha-release-candidate
+	output := fmt.Sprintf(`ButtBot v0.5-alpha-release-candidate
 	OS: %s
 	CPU: %s
 	RAM: %s

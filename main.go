@@ -143,7 +143,9 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			keywords := strings.Join(tokens, "")
 			Play(s, g.VoiceStates, g.ID, m.Author.ID, keywords)
 
-			fmt.Println("done playing (TODO make async)")
+			fmt.Println("done playing")
+		} else if tokens[1] == "stop" {
+			Stop()
 		} else if tokens[1] == "info" {
 			_, err := s.ChannelMessageSend(m.ChannelID, Info())
 			if err != nil {
