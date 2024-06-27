@@ -100,8 +100,8 @@ func Play(
 	}
 }
 
-func Stop() {
-	cmd <- "stop"
+func QueueAction(action string) {
+	cmd <- action
 }
 
 // TODO check character limit
@@ -161,5 +161,7 @@ func Help() string {
 		"1. Download `!butt <youtube-url>`\n" +
 		"2. List all media `!butt list`\n" +
 		"3. Play media `!butt play <keyword>`\n" +
+		" - !butt skip -- skip current playing\n" +
+		" - !butt stop -- exit\n" +
 		"4. System info `!butt info`"
 }

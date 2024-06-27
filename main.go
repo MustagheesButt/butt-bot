@@ -143,9 +143,11 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			keywords := strings.Join(tokens, "")
 			Play(s, g.VoiceStates, g.ID, m.Author.ID, keywords)
 
+			// TODO acknowledge request has been queued
+
 			fmt.Println("done playing")
-		} else if tokens[1] == "stop" {
-			Stop()
+		} else if slices.Contains([]string{"stop", "skip"}, tokens[1]) {
+			QueueAction(tokens[1])
 		} else if tokens[1] == "info" {
 			_, err := s.ChannelMessageSend(m.ChannelID, Info())
 			if err != nil {

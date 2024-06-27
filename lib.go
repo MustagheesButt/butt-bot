@@ -71,40 +71,45 @@ func playSound(s *discordgo.Session, guildID, channelID string) (err error) {
 		return err
 	}
 
+	next := <-queue
 QueueLoop:
-	for {
-		select {
-		// TODO fix bug last playing doesnt end - infinite loop
-		case next := <-queue:
-			// Load the sound file.
-			err := loadSound(next)
-			if err != nil {
-				fmt.Println("Error loading sound: ", err)
-				return err
-			}
-			fmt.Println("Now playing", next)
-		default:
-			// Sleep for a specified amount of time before playing the sound
-			time.Sleep(250 * time.Millisecond)
-			// Start speaking.
-			vc.Speaking(true)
+	// Load the sound file.
+	err = loadSound(next)
+	if err != nil {
+		fmt.Println("Error loading sound: ", err)
+		return err
+	}
 
-			// Send the buffer data.
-		PlayLoop:
-			for _, buff := range buffer {
-				select {
-				case _cmd := <-cmd:
-					if _cmd == "stop" {
-						break QueueLoop
-					} else if _cmd == "skip" {
-						break PlayLoop
-					}
-				default:
-					vc.OpusSend <- buff
-				}
+	// Sleep for a specified amount of time before playing the sound
+	time.Sleep(250 * time.Millisecond)
+	// Start speaking.
+	vc.Speaking(true)
+	fmt.Println("Now playing", next)
+
+	// Send the buffer data.
+PlayLoop:
+	for _, buff := range buffer {
+		select {
+		case _cmd := <-cmd:
+			if _cmd == "stop" {
+				goto ExitQueue
+			} else if _cmd == "skip" {
+				break PlayLoop
 			}
+		default:
+			vc.OpusSend <- buff
 		}
 	}
+
+	// check for next in queue
+	select {
+	case next = <-queue:
+		goto QueueLoop
+	default:
+		goto ExitQueue
+	}
+
+ExitQueue:
 
 	// Stop speaking
 	vc.Speaking(false)
