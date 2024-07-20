@@ -77,6 +77,7 @@ func Play(
 	query string,
 ) {
 	var filename = cm.Closest(query)
+	// TODO what if nothing is found
 	queue <- filename
 
 	fmt.Println("Queued", filename)

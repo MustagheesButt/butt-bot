@@ -17,7 +17,8 @@ Also need `neofetch` and `sed` for `info` command.
 ## Todos
 
 - ~~stop music~~
-- queue music, skip entry in queue
+- ~~queue music, skip entry in queue~~
 - make sure everything is non blocking
 - paging in `list` command (or remove `list` entirely)
-- implement slash commands
+- ~~implement slash commands~~
+- integrate pocketbase for song stats

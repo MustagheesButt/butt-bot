@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/url"
 	"os"
 	"os/signal"
@@ -42,8 +43,10 @@ func init() {
 	// }
 
 	// Create a closestmatch object
-	files, _ := List()
-	cm = closestmatch.New(files, bagSizes)
+	go func() {
+		files, _ := List()
+		cm = closestmatch.New(files, bagSizes)
+	}()
 }
 
 func main() {
@@ -63,6 +66,11 @@ func main() {
 
 	// Register messageCreate as a callback for the messageCreate events.
 	dcSession.AddHandler(messageCreate)
+	dcSession.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+		if h, ok := commandHandlers[i.ApplicationCommandData().Name]; ok {
+			h(s, i)
+		}
+	})
 
 	// dcSession.AddHandler(guildCreate)
 
@@ -73,6 +81,15 @@ func main() {
 	err = dcSession.Open()
 	if err != nil {
 		fmt.Println("Error opening Discord session: ", err)
+	}
+
+	registeredCommands := make([]*discordgo.ApplicationCommand, len(slashCommands))
+	for i, v := range slashCommands {
+		cmd, err := dcSession.ApplicationCommandCreate(dcSession.State.User.ID, "", v)
+		if err != nil {
+			log.Panicf("Cannot create '%v' command: %v", v.Name, err)
+		}
+		registeredCommands[i] = cmd
 	}
 
 	// Wait here until CTRL-C or other term signal is received.
